@@ -6,3 +6,6 @@ ifconfig | grep "inet " | grep -v 127.0.0.1
 
 # Run the app
 python app.py
+
+# convert json to media_library.py file
+python convert_json_to_py.py

@@ -91,12 +91,31 @@
         </div>
       </div>
 
-      <!-- Download button -->
+      <!-- Quality selection & download -->
       <div class="px-4 pb-4 pt-1">
+        {% set torrents = item.get('torrents', {}) if item.get('torrents') else {} %}
+        {% if torrents %}
+        <div class="flex gap-2">
+          {% for tier in ['720p', '1080p', '2160p'] %}
+            {% if tier in torrents %}
+            <button onclick="plunderMedia(this, '{{ torrents[tier].url }}')"
+                    class="flex-1 bg-gradient-to-r from-pirate-amber to-pirate-gold text-pirate-black font-bold py-3.5 rounded-xl text-base transition-all hover:shadow-lg hover:shadow-pirate-amber/20 active:scale-[0.98]">
+              {{ tier }}
+            </button>
+            {% else %}
+            <button disabled
+                    class="flex-1 bg-pirate-plank text-pirate-cream/20 font-bold py-3.5 rounded-xl text-base cursor-not-allowed">
+              {{ tier }}
+            </button>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% elif item.get('torrent_url') %}
         <button onclick="plunderMedia(this, '{{ item.torrent_url }}')"
                 class="w-full bg-gradient-to-r from-pirate-amber to-pirate-gold text-pirate-black font-bold py-4 rounded-xl text-lg transition-all hover:shadow-lg hover:shadow-pirate-amber/20 active:scale-[0.98]">
           🏴‍☠️ Plunder This!
         </button>
+        {% endif %}
       </div>
     </div>
     {% endfor %}
@@ -109,8 +128,9 @@
 <script>
   async function plunderMedia(btn, url) {
     const origText = btn.innerHTML;
+    const origClasses = btn.className;
     btn.disabled = true;
-    btn.innerHTML = '⏳ Sendin\' the crew...';
+    btn.innerHTML = '⏳';
     btn.classList.add('opacity-60');
 
     const data = await apiCall('/api/torrents/add', {
@@ -120,18 +140,17 @@
 
     if (data) {
       showToast(data.message);
-      btn.innerHTML = '✅ Plunder Begun!';
-      btn.classList.remove('opacity-60');
-      btn.classList.add('bg-green-800', 'from-green-700', 'to-green-600', 'text-white');
+      btn.className = 'flex-1 bg-green-700 text-white font-bold py-3.5 rounded-xl text-base';
+      btn.innerHTML = '✅';
       setTimeout(() => {
         btn.innerHTML = origText;
+        btn.className = origClasses;
         btn.disabled = false;
-        btn.classList.remove('bg-green-800', 'from-green-700', 'to-green-600', 'text-white', 'opacity-60');
       }, 3000);
     } else {
       btn.innerHTML = origText;
+      btn.className = origClasses;
       btn.disabled = false;
-      btn.classList.remove('opacity-60');
     }
   }
 </script>
