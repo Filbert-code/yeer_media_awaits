@@ -1,0 +1,9 @@
+{
+  "qbittorrent": {
+    "host": "localhost",
+    "port": 8080,
+    "username": "admin",
+    "password": "adminadmin"
+  },
+  "download_path": ""
+}

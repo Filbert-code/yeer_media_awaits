@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Captain's Quarters — Rum & Reels{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Page heading -->
+  <div>
+    <h2 class="font-pirate text-3xl text-pirate-gold">Captain's Quarters</h2>
+    <p class="text-base text-pirate-cream/50 mt-1">Configure yer ship's heading and provisions.</p>
+  </div>
+
+  <!-- Connection status card -->
+  <div id="conn-status" class="bg-pirate-hull rounded-2xl border border-pirate-plank p-5">
+    <div class="flex items-center gap-4">
+      <div id="conn-icon" class="text-4xl">⚓</div>
+      <div class="flex-1">
+        <h3 class="text-lg font-semibold text-pirate-cream" id="conn-title">Ship Status Unknown</h3>
+        <p class="text-sm text-pirate-cream/50" id="conn-detail">Test the connection below.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings form -->
+  <form id="settings-form" class="space-y-5" onsubmit="return false;">
+
+    <!-- qBittorrent Connection section -->
+    <div class="space-y-4">
+      <h3 class="font-pirate text-2xl text-pirate-gold flex items-center gap-2">
+        <span>🧭</span> Ship Coordinates
+      </h3>
+      <p class="text-sm text-pirate-cream/40">Where yer qBittorrent be anchored.</p>
+
+      <div class="space-y-4">
+        <div>
+          <label for="host" class="block text-base font-semibold text-pirate-cream/80 mb-2">Host</label>
+          <input type="text" id="host" value="{{ config.qbittorrent.host }}"
+                 class="w-full bg-pirate-black border border-pirate-plank rounded-xl py-4 px-5 text-lg text-pirate-cream placeholder:text-pirate-cream/30 focus:outline-none focus:border-pirate-amber focus:ring-1 focus:ring-pirate-amber/50 transition-colors"
+                 placeholder="localhost">
+        </div>
+
+        <div>
+          <label for="port" class="block text-base font-semibold text-pirate-cream/80 mb-2">Port</label>
+          <input type="number" id="port" value="{{ config.qbittorrent.port }}"
+                 class="w-full bg-pirate-black border border-pirate-plank rounded-xl py-4 px-5 text-lg text-pirate-cream placeholder:text-pirate-cream/30 focus:outline-none focus:border-pirate-amber focus:ring-1 focus:ring-pirate-amber/50 transition-colors"
+                 placeholder="8080">
+        </div>
+
+        <div>
+          <label for="username" class="block text-base font-semibold text-pirate-cream/80 mb-2">Captain's Name</label>
+          <input type="text" id="username" value="{{ config.qbittorrent.username }}"
+                 class="w-full bg-pirate-black border border-pirate-plank rounded-xl py-4 px-5 text-lg text-pirate-cream placeholder:text-pirate-cream/30 focus:outline-none focus:border-pirate-amber focus:ring-1 focus:ring-pirate-amber/50 transition-colors"
+                 placeholder="admin">
+        </div>
+
+        <div>
+          <label for="password" class="block text-base font-semibold text-pirate-cream/80 mb-2">Secret Word</label>
+          <div class="relative">
+            <input type="password" id="password" value="{{ config.qbittorrent.password }}"
+                   class="w-full bg-pirate-black border border-pirate-plank rounded-xl py-4 px-5 pr-14 text-lg text-pirate-cream placeholder:text-pirate-cream/30 focus:outline-none focus:border-pirate-amber focus:ring-1 focus:ring-pirate-amber/50 transition-colors"
+                   placeholder="••••••••">
+            <button type="button" onclick="togglePassword()" class="absolute right-4 top-1/2 -translate-y-1/2 text-pirate-cream/40 hover:text-pirate-cream/70 transition-colors text-2xl" id="pw-toggle" title="Show password">
+              👁
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="border-t border-pirate-plank"></div>
+
+    <!-- Download path section -->
+    <div class="space-y-4">
+      <h3 class="font-pirate text-2xl text-pirate-gold flex items-center gap-2">
+        <span>📦</span> Treasure Hold
+      </h3>
+      <p class="text-sm text-pirate-cream/40">Where plundered loot gets stashed on the server.</p>
+
+      <div>
+        <label for="download_path" class="block text-base font-semibold text-pirate-cream/80 mb-2">Download Folder</label>
+        <input type="text" id="download_path" value="{{ config.download_path }}"
+               class="w-full bg-pirate-black border border-pirate-plank rounded-xl py-4 px-5 text-lg text-pirate-cream placeholder:text-pirate-cream/30 focus:outline-none focus:border-pirate-amber focus:ring-1 focus:ring-pirate-amber/50 transition-colors"
+               placeholder="/path/to/downloads (leave empty for default)">
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="border-t border-pirate-plank"></div>
+
+    <!-- Action buttons -->
+    <div class="space-y-3">
+      <button type="button" onclick="testConnection()"
+              class="w-full bg-pirate-hull border-2 border-pirate-amber/40 hover:border-pirate-amber text-pirate-amber font-bold py-4 rounded-xl text-lg transition-all"
+              id="test-btn">
+        🔭 Test Connection
+      </button>
+
+      <button type="button" onclick="saveSettings()"
+              class="w-full bg-gradient-to-r from-pirate-amber to-pirate-gold text-pirate-black font-bold py-4 rounded-xl text-lg transition-all hover:shadow-lg hover:shadow-pirate-amber/20 active:scale-[0.98]"
+              id="save-btn">
+        💾 Save Captain's Orders
+      </button>
+    </div>
+  </form>
+
+  <!-- App info -->
+  <div class="text-center pt-4 pb-2 space-y-1">
+    <p class="text-sm text-pirate-cream/30">🏴‍☠️ Rum & Reels v1.0</p>
+    <p class="text-xs text-pirate-cream/20">Built for pirates, by pirates</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let passwordVisible = false;
+
+  function togglePassword() {
+    const input = document.getElementById('password');
+    const btn = document.getElementById('pw-toggle');
+    passwordVisible = !passwordVisible;
+    input.type = passwordVisible ? 'text' : 'password';
+    btn.textContent = passwordVisible ? '🙈' : '👁';
+  }
+
+  function getFormData() {
+    return {
+      host: document.getElementById('host').value.trim(),
+      port: document.getElementById('port').value.trim(),
+      username: document.getElementById('username').value.trim(),
+      password: document.getElementById('password').value,
+      download_path: document.getElementById('download_path').value.trim(),
+    };
+  }
+
+  function setConnectionStatus(status, title, detail) {
+    const icon = document.getElementById('conn-icon');
+    const titleEl = document.getElementById('conn-title');
+    const detailEl = document.getElementById('conn-detail');
+    const card = document.getElementById('conn-status');
+
+    card.className = 'rounded-2xl border p-5 ' + {
+      ok:      'bg-green-900/20 border-green-700/40',
+      error:   'bg-pirate-red/10 border-pirate-red/30',
+      unknown: 'bg-pirate-hull border-pirate-plank',
+      loading: 'bg-pirate-hull border-pirate-amber/30',
+    }[status];
+
+    icon.textContent = { ok: '✅', error: '☠️', unknown: '⚓', loading: '🔄' }[status];
+    titleEl.textContent = title;
+    detailEl.textContent = detail;
+  }
+
+  async function testConnection() {
+    const btn = document.getElementById('test-btn');
+    btn.disabled = true;
+    btn.innerHTML = '🔄 Hailin\' the ship...';
+    setConnectionStatus('loading', 'Testing...', 'Sendin\' a scout to the ship...');
+
+    await saveSettings(true);
+
+    const data = await apiCall('/api/test-connection', { method: 'POST' });
+
+    if (data) {
+      setConnectionStatus('ok', 'Ship is Seaworthy!', data.message);
+      showToast(data.message);
+    } else {
+      setConnectionStatus('error', 'Ship Not Found!', 'Check coordinates and credentials.');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '🔭 Test Connection';
+  }
+
+  async function saveSettings(silent = false) {
+    const btn = document.getElementById('save-btn');
+    if (!silent) {
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Savin\'...';
+    }
+
+    const data = await apiCall('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify(getFormData()),
+    });
+
+    if (!silent) {
+      if (data) showToast(data.message);
+      btn.disabled = false;
+      btn.innerHTML = '💾 Save Captain\'s Orders';
+    }
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>{% block title %}The Pirate Bay of Downloads{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            pirate: {
+              red: '#db3b25',
+              gold: '#ddbc85',
+              amber: '#cf7a27',
+              cream: '#e6e1dd',
+              black: '#0a0a0a',
+              dark: '#141010',
+              hull: '#1c1616',
+              plank: '#251e1e',
+            }
+          },
+          fontFamily: {
+            pirate: ['"Pirata One"', 'Georgia', 'serif'],
+            body: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Pirata+One&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: #0a0a0a;
+      font-size: 18px;
+    }
+
+    .font-pirate { font-family: 'Pirata One', Georgia, serif; }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #141010; }
+    ::-webkit-scrollbar-thumb { background: #cf7a27; border-radius: 3px; }
+
+    /* Progress bar animations */
+    .progress-bar-fill {
+      transition: width 0.6s ease-in-out;
+      background: linear-gradient(90deg, #cf7a27, #ddbc85);
+    }
+
+    /* Toast animation */
+    @keyframes toast-in {
+      from { transform: translateY(100%); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes toast-out {
+      from { transform: translateY(0); opacity: 1; }
+      to   { transform: translateY(100%); opacity: 0; }
+    }
+    .toast-enter { animation: toast-in 0.3s ease-out forwards; }
+    .toast-exit  { animation: toast-out 0.3s ease-in forwards; }
+
+    /* Card hover */
+    .treasure-card {
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .treasure-card:active {
+      transform: scale(0.98);
+    }
+
+    /* Skull pulse for loading */
+    @keyframes skull-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .skull-bob { animation: skull-bob 1.5s ease-in-out infinite; }
+
+    /* Bottom nav safe area */
+    .page-content {
+      padding-bottom: 6rem;
+    }
+  </style>
+</head>
+<body class="h-full bg-pirate-black text-pirate-cream">
+
+  <!-- Toast container -->
+  <div id="toast-container" class="fixed top-4 left-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Connection status banner -->
+  <div id="conn-banner" class="hidden bg-pirate-red/90 text-white text-center py-2 px-4 text-base font-semibold sticky top-0 z-40">
+    ☠️ Can't reach the ship! Check yer settings.
+  </div>
+
+  <!-- Header -->
+  <header class="bg-pirate-dark border-b border-pirate-plank px-4 pt-4 pb-3">
+    <div class="max-w-lg mx-auto flex items-center gap-3">
+      <div class="text-4xl">🏴‍☠️</div>
+      <div>
+        <h1 class="font-pirate text-3xl text-pirate-gold leading-tight tracking-wide">Rum &amp; Reels</h1>
+        <p class="text-sm text-pirate-gold/60 -mt-0.5">Yo ho ho and a bottle of downloads</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page content -->
+  <main class="page-content max-w-lg mx-auto px-4 py-5">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Bottom navigation -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-pirate-dark border-t border-pirate-plank z-40">
+    <div class="max-w-lg mx-auto flex">
+      <a href="/"
+         class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors
+                {{ 'text-pirate-gold' if request.path == '/' else 'text-pirate-cream/50 hover:text-pirate-cream/80' }}">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+        </svg>
+        <span class="text-sm font-semibold">Plunder</span>
+      </a>
+      <a href="/browse"
+         class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors
+                {{ 'text-pirate-gold' if request.path == '/browse' else 'text-pirate-cream/50 hover:text-pirate-cream/80' }}">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/>
+        </svg>
+        <span class="text-sm font-semibold">Treasure</span>
+      </a>
+      <a href="/settings"
+         class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors
+                {{ 'text-pirate-gold' if request.path == '/settings' else 'text-pirate-cream/50 hover:text-pirate-cream/80' }}">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <span class="text-sm font-semibold">Captain's</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Shared JS utilities -->
+  <script>
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bgColor = type === 'success' ? 'bg-green-800/95' :
+                       type === 'error'   ? 'bg-pirate-red/95' :
+                                            'bg-pirate-amber/95';
+      const icon = type === 'success' ? '🍾' :
+                   type === 'error'   ? '☠️' :
+                                        '⚓';
+      toast.className = `toast-enter pointer-events-auto ${bgColor} text-white rounded-xl px-5 py-4 shadow-2xl text-base font-semibold flex items-center gap-3`;
+      toast.innerHTML = `<span class="text-2xl">${icon}</span><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove('toast-enter');
+        toast.classList.add('toast-exit');
+        toast.addEventListener('animationend', () => toast.remove());
+      }, 3500);
+    }
+
+    async function apiCall(url, options = {}) {
+      try {
+        const res = await fetch(url, {
+          headers: { 'Content-Type': 'application/json' },
+          ...options,
+        });
+        const data = await res.json();
+        if (!res.ok || data.status === 'error') {
+          showToast(data.message || 'Something went wrong!', 'error');
+          return null;
+        }
+        return data;
+      } catch (err) {
+        showToast("Lost connection to the ship!", 'error');
+        return null;
+      }
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

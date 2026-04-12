@@ -1,0 +1,8 @@
+# Find your Mac's local IP address (WiFi)
+ipconfig getifaddr en0
+
+# Find all local IPs (fallback if en0 doesn't work)
+ifconfig | grep "inet " | grep -v 127.0.0.1
+
+# Run the app
+python app.py

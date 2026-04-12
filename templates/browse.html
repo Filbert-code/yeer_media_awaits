@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Treasure Map — Rum & Reels{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+  <!-- Page heading -->
+  <h2 class="font-pirate text-3xl text-pirate-gold">Treasure Map</h2>
+
+  <!-- Search & filter -->
+  <form method="GET" action="/browse" class="space-y-3">
+    <div class="relative">
+      <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-pirate-cream/40" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+      </svg>
+      <input type="text" name="q" value="{{ query }}"
+             placeholder="Search the treasure chest..."
+             class="w-full bg-pirate-hull border border-pirate-plank rounded-2xl py-4 pl-13 pr-5 text-lg text-pirate-cream placeholder:text-pirate-cream/30 focus:outline-none focus:border-pirate-amber focus:ring-1 focus:ring-pirate-amber/50 transition-colors">
+    </div>
+
+    {% if categories %}
+    <div class="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+      <a href="/browse{% if query %}?q={{ query }}{% endif %}"
+         class="shrink-0 px-5 py-2.5 rounded-full text-base font-semibold transition-colors
+                {{ 'bg-pirate-amber text-pirate-black' if not selected_category else 'bg-pirate-hull border border-pirate-plank text-pirate-cream/60 hover:text-pirate-cream' }}">
+        All Loot
+      </a>
+      {% for cat in categories %}
+      <a href="/browse?category={{ cat }}{% if query %}&q={{ query }}{% endif %}"
+         class="shrink-0 px-5 py-2.5 rounded-full text-base font-semibold transition-colors capitalize
+                {{ 'bg-pirate-amber text-pirate-black' if selected_category == cat else 'bg-pirate-hull border border-pirate-plank text-pirate-cream/60 hover:text-pirate-cream' }}">
+        {{ cat }}
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </form>
+
+  <!-- Empty library state -->
+  {% if not media %}
+  <div class="flex flex-col items-center justify-center py-16 gap-4 text-center">
+    {% if query or selected_category %}
+      <div class="text-7xl">🔭</div>
+      <p class="text-xl text-pirate-cream/60 font-semibold">No treasure found!</p>
+      <p class="text-base text-pirate-cream/40">Try a different search or clear yer filters.</p>
+      <a href="/browse" class="mt-2 bg-pirate-amber/20 hover:bg-pirate-amber/30 text-pirate-amber font-semibold py-3 px-8 rounded-xl text-lg transition-colors">
+        Clear Filters
+      </a>
+    {% else %}
+      <div class="text-7xl">🗺️</div>
+      <p class="text-xl text-pirate-cream/60 font-semibold">The treasure map be empty!</p>
+      <p class="text-base text-pirate-cream/40 max-w-xs">
+        Add yer media to <code class="bg-pirate-plank px-2 py-0.5 rounded text-pirate-amber text-sm">media_library.py</code> to fill the chest.
+      </p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Media grid -->
+  {% if media %}
+  <div class="space-y-4">
+    {% for item in media %}
+    <div class="treasure-card bg-pirate-hull rounded-2xl border border-pirate-plank overflow-hidden">
+      <div class="flex">
+        <!-- Poster / placeholder -->
+        {% if item.image_url %}
+        <div class="w-28 shrink-0 bg-pirate-plank">
+          <img src="{{ item.image_url }}" alt="{{ item.title }}" class="w-full h-full object-cover">
+        </div>
+        {% else %}
+        <div class="w-28 shrink-0 bg-pirate-plank flex items-center justify-center">
+          <span class="text-5xl">🎬</span>
+        </div>
+        {% endif %}
+
+        <!-- Content -->
+        <div class="flex-1 p-4 space-y-2 min-w-0">
+          <div>
+            <h3 class="text-lg font-semibold text-pirate-cream leading-snug line-clamp-2">{{ item.title }}</h3>
+            <div class="flex items-center gap-2 mt-1">
+              {% if item.year %}
+              <span class="text-sm text-pirate-cream/50">{{ item.year }}</span>
+              {% endif %}
+              {% if item.category %}
+              <span class="text-xs font-semibold uppercase tracking-wider bg-pirate-amber/15 text-pirate-amber px-2.5 py-0.5 rounded-full">{{ item.category }}</span>
+              {% endif %}
+            </div>
+          </div>
+          {% if item.description %}
+          <p class="text-sm text-pirate-cream/50 line-clamp-2">{{ item.description }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Download button -->
+      <div class="px-4 pb-4 pt-1">
+        <button onclick="plunderMedia(this, '{{ item.torrent_url }}')"
+                class="w-full bg-gradient-to-r from-pirate-amber to-pirate-gold text-pirate-black font-bold py-4 rounded-xl text-lg transition-all hover:shadow-lg hover:shadow-pirate-amber/20 active:scale-[0.98]">
+          🏴‍☠️ Plunder This!
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function plunderMedia(btn, url) {
+    const origText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Sendin\' the crew...';
+    btn.classList.add('opacity-60');
+
+    const data = await apiCall('/api/torrents/add', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    });
+
+    if (data) {
+      showToast(data.message);
+      btn.innerHTML = '✅ Plunder Begun!';
+      btn.classList.remove('opacity-60');
+      btn.classList.add('bg-green-800', 'from-green-700', 'to-green-600', 'text-white');
+      setTimeout(() => {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+        btn.classList.remove('bg-green-800', 'from-green-700', 'to-green-600', 'text-white', 'opacity-60');
+      }, 3000);
+    } else {
+      btn.innerHTML = origText;
+      btn.disabled = false;
+      btn.classList.remove('opacity-60');
+    }
+  }
+</script>
+{% endblock %}

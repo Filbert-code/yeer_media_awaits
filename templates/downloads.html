@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}Plunder in Progress — Rum & Reels{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+  <!-- Page heading -->
+  <div class="flex items-center justify-between">
+    <h2 class="font-pirate text-3xl text-pirate-gold">Active Plunder</h2>
+    <button onclick="fetchTorrents()" class="text-pirate-amber hover:text-pirate-gold transition-colors p-2 -mr-2" title="Refresh">
+      <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Loading state -->
+  <div id="loading-state" class="flex flex-col items-center justify-center py-16 gap-4">
+    <div class="text-6xl skull-bob">🏴‍☠️</div>
+    <p class="text-xl text-pirate-cream/60 font-semibold">Scoutin' the seas...</p>
+  </div>
+
+  <!-- Empty state -->
+  <div id="empty-state" class="hidden flex flex-col items-center justify-center py-16 gap-4 text-center">
+    <div class="text-7xl">🍾</div>
+    <p class="text-xl text-pirate-cream/60 font-semibold">No plunder in progress!</p>
+    <p class="text-base text-pirate-cream/40">Head to the <a href="/browse" class="text-pirate-amber underline">Treasure Map</a> to start downloadin'.</p>
+  </div>
+
+  <!-- Error state -->
+  <div id="error-state" class="hidden">
+    <div class="bg-pirate-red/20 border border-pirate-red/40 rounded-2xl p-6 text-center space-y-3">
+      <div class="text-5xl">☠️</div>
+      <p class="text-xl font-semibold text-pirate-red">Ship not found!</p>
+      <p class="text-base text-pirate-cream/60">Can't reach qBittorrent. Make sure the server be runnin' and check yer <a href="/settings" class="text-pirate-amber underline">Captain's Quarters</a>.</p>
+    </div>
+  </div>
+
+  <!-- Torrent list -->
+  <div id="torrent-list" class="hidden space-y-4"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const torrentList = document.getElementById('torrent-list');
+  const loadingState = document.getElementById('loading-state');
+  const emptyState = document.getElementById('empty-state');
+  const errorState = document.getElementById('error-state');
+  const connBanner = document.getElementById('conn-banner');
+
+  function stateColor(stateClass) {
+    return {
+      downloading: 'from-pirate-amber to-pirate-gold',
+      seeding:     'from-green-600 to-green-400',
+      stalled:     'from-yellow-700 to-yellow-500',
+      queued:      'from-pirate-cream/30 to-pirate-cream/20',
+      paused:      'from-gray-600 to-gray-500',
+      checking:    'from-blue-600 to-blue-400',
+      error:       'from-pirate-red to-red-400',
+    }[stateClass] || 'from-gray-600 to-gray-500';
+  }
+
+  function stateBadgeColor(stateClass) {
+    return {
+      downloading: 'bg-pirate-amber/20 text-pirate-amber',
+      seeding:     'bg-green-900/40 text-green-400',
+      stalled:     'bg-yellow-900/40 text-yellow-400',
+      queued:      'bg-pirate-cream/10 text-pirate-cream/60',
+      paused:      'bg-gray-800 text-gray-400',
+      checking:    'bg-blue-900/40 text-blue-400',
+      error:       'bg-pirate-red/20 text-pirate-red',
+    }[stateClass] || 'bg-gray-800 text-gray-400';
+  }
+
+  function renderTorrent(t) {
+    return `
+      <div class="treasure-card bg-pirate-hull rounded-2xl border border-pirate-plank overflow-hidden">
+        <div class="p-4 space-y-3">
+          <!-- Name and status -->
+          <div class="flex items-start justify-between gap-3">
+            <h3 class="text-lg font-semibold text-pirate-cream leading-snug line-clamp-2 flex-1">${t.name}</h3>
+            <span class="shrink-0 text-sm font-semibold px-3 py-1 rounded-full ${stateBadgeColor(t.state_class)}">
+              ${t.state_label}
+            </span>
+          </div>
+
+          <!-- Progress bar -->
+          <div class="space-y-1.5">
+            <div class="w-full h-3 bg-pirate-black rounded-full overflow-hidden">
+              <div class="h-full rounded-full bg-gradient-to-r ${stateColor(t.state_class)} progress-bar-fill"
+                   style="width: ${t.progress}%"></div>
+            </div>
+            <div class="flex justify-between text-sm text-pirate-cream/50">
+              <span>${t.progress}%</span>
+              <span>${t.downloaded} / ${t.size}</span>
+            </div>
+          </div>
+
+          <!-- Stats row -->
+          <div class="flex flex-wrap gap-x-5 gap-y-1 text-sm text-pirate-cream/60">
+            ${t.state_class === 'downloading' ? `
+              <span>⬇ ${t.dl_speed}</span>
+              <span>⬆ ${t.up_speed}</span>
+              <span>⏱ ${t.eta}</span>
+            ` : `
+              <span>⬆ ${t.up_speed}</span>
+              <span>Ratio: ${t.ratio}</span>
+            `}
+          </div>
+
+          <!-- Action buttons -->
+          <div class="flex gap-2 pt-1">
+            ${t.state_class === 'paused' ? `
+              <button onclick="resumeTorrent('${t.hash}')"
+                      class="flex-1 bg-pirate-amber/20 hover:bg-pirate-amber/30 text-pirate-amber font-semibold py-3 rounded-xl text-base transition-colors">
+                ▶ Set Sail
+              </button>
+            ` : t.state_class === 'downloading' || t.state_class === 'seeding' || t.state_class === 'stalled' ? `
+              <button onclick="pauseTorrent('${t.hash}')"
+                      class="flex-1 bg-pirate-cream/10 hover:bg-pirate-cream/15 text-pirate-cream/70 font-semibold py-3 rounded-xl text-base transition-colors">
+                ⏸ Drop Anchor
+              </button>
+            ` : ''}
+            <button onclick="confirmDelete('${t.hash}', \`${t.name.replace(/`/g, '\\`').replace(/'/g, "\\'")}\`)"
+                    class="bg-pirate-red/15 hover:bg-pirate-red/25 text-pirate-red font-semibold py-3 px-5 rounded-xl text-base transition-colors">
+              🗑
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function fetchTorrents() {
+    const data = await apiCall('/api/torrents');
+    if (!data) {
+      loadingState.classList.add('hidden');
+      emptyState.classList.add('hidden');
+      torrentList.classList.add('hidden');
+      errorState.classList.remove('hidden');
+      connBanner.classList.remove('hidden');
+      return;
+    }
+
+    connBanner.classList.add('hidden');
+    errorState.classList.add('hidden');
+    loadingState.classList.add('hidden');
+
+    if (data.torrents.length === 0) {
+      emptyState.classList.remove('hidden');
+      torrentList.classList.add('hidden');
+    } else {
+      emptyState.classList.add('hidden');
+      torrentList.classList.remove('hidden');
+      torrentList.innerHTML = data.torrents.map(renderTorrent).join('');
+    }
+  }
+
+  async function resumeTorrent(hash) {
+    const data = await apiCall(`/api/torrents/${hash}/resume`, { method: 'POST' });
+    if (data) { showToast(data.message); fetchTorrents(); }
+  }
+
+  async function pauseTorrent(hash) {
+    const data = await apiCall(`/api/torrents/${hash}/pause`, { method: 'POST' });
+    if (data) { showToast(data.message); fetchTorrents(); }
+  }
+
+  function confirmDelete(hash, name) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/70';
+    modal.innerHTML = `
+      <div class="bg-pirate-hull border border-pirate-plank rounded-2xl w-full max-w-lg p-6 space-y-4 mb-16">
+        <h3 class="font-pirate text-2xl text-pirate-gold">Walk the Plank?</h3>
+        <p class="text-base text-pirate-cream/70">Are ye sure ye want to remove <strong class="text-pirate-cream">${name}</strong>?</p>
+        <div class="space-y-3">
+          <button onclick="deleteTorrent('${hash}', true, this)"
+                  class="w-full bg-pirate-red/90 hover:bg-pirate-red text-white font-semibold py-4 rounded-xl text-lg transition-colors">
+            ☠️ Delete with Files
+          </button>
+          <button onclick="deleteTorrent('${hash}', false, this)"
+                  class="w-full bg-pirate-amber/20 hover:bg-pirate-amber/30 text-pirate-amber font-semibold py-4 rounded-xl text-lg transition-colors">
+            🗑 Remove from List Only
+          </button>
+          <button onclick="this.closest('.fixed').remove()"
+                  class="w-full bg-pirate-cream/10 hover:bg-pirate-cream/15 text-pirate-cream/60 font-semibold py-4 rounded-xl text-lg transition-colors">
+            Nay, Keep It
+          </button>
+        </div>
+      </div>
+    `;
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+  }
+
+  async function deleteTorrent(hash, deleteFiles, btn) {
+    const modal = btn.closest('.fixed');
+    const data = await apiCall(`/api/torrents/${hash}/delete`, {
+      method: 'POST',
+      body: JSON.stringify({ delete_files: deleteFiles }),
+    });
+    if (modal) modal.remove();
+    if (data) { showToast(data.message); fetchTorrents(); }
+  }
+
+  fetchTorrents();
+  setInterval(fetchTorrents, 5000);
+</script>
+{% endblock %}
