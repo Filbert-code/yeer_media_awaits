@@ -1,0 +1,651 @@
+{% extends "base.html" %}
+{% block title %}Search the Seas — Rum & Reels{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+  <!-- Page heading -->
+  <h2 class="font-pirate text-3xl text-pirate-gold">Search the Seas</h2>
+
+  <!-- Movies / TV Toggle -->
+  <div class="flex bg-pirate-hull rounded-2xl border border-pirate-plank p-1">
+    <button id="tab-movies" onclick="switchMode('movies')"
+            class="flex-1 py-3 rounded-xl text-lg font-bold transition-all text-center">
+      🎬 Movies
+    </button>
+    <button id="tab-tv" onclick="switchMode('tv')"
+            class="flex-1 py-3 rounded-xl text-lg font-bold transition-all text-center">
+      📺 TV Shows
+    </button>
+  </div>
+
+  <!-- Search input -->
+  <div class="relative">
+    <input type="text" id="search-input"
+           placeholder="Search for a movie on YTS..."
+           class="w-full bg-pirate-hull border border-pirate-plank rounded-2xl py-4 pl-5 pr-24 text-lg text-pirate-cream placeholder:text-pirate-cream/30 focus:outline-none focus:border-pirate-amber focus:ring-1 focus:ring-pirate-amber/50 transition-colors"
+           onkeydown="if(event.key==='Enter') doSearch()">
+    <button onclick="doSearch()"
+            class="absolute right-2 top-1/2 -translate-y-1/2 bg-pirate-amber hover:bg-pirate-gold text-pirate-black font-bold px-5 py-2.5 rounded-xl text-base transition-colors">
+      Search
+    </button>
+  </div>
+
+  <!-- Initial state -->
+  <div id="initial-state" class="flex flex-col items-center justify-center py-16 gap-4 text-center">
+    <div class="text-7xl">🔭</div>
+    <p class="text-xl text-pirate-cream/60 font-semibold">Search the seven seas!</p>
+    <p class="text-base text-pirate-cream/40">Find any movie or TV show and plunder it directly.</p>
+  </div>
+
+  <!-- Loading state -->
+  <div id="search-loading" class="hidden flex flex-col items-center justify-center py-16 gap-4">
+    <div class="text-6xl skull-bob">🏴‍☠️</div>
+    <p id="loading-text" class="text-xl text-pirate-cream/60 font-semibold">Searchin' the seas...</p>
+  </div>
+
+  <!-- No results state -->
+  <div id="no-results" class="hidden flex flex-col items-center justify-center py-16 gap-4 text-center">
+    <div class="text-7xl">🏝️</div>
+    <p class="text-xl text-pirate-cream/60 font-semibold">No treasure found!</p>
+    <p class="text-base text-pirate-cream/40">Try a different search term, matey.</p>
+  </div>
+
+  <!-- Results header -->
+  <div id="results-header" class="hidden flex items-center justify-between">
+    <p class="text-base text-pirate-cream/50"><span id="results-count"></span> results found</p>
+  </div>
+
+  <!-- Movie results list -->
+  <div id="results-list" class="hidden space-y-3"></div>
+
+  <!-- TV show results list -->
+  <div id="tv-results-list" class="hidden space-y-3"></div>
+
+  <!-- TV Episodes view -->
+  <div id="tv-episodes-view" class="hidden space-y-4">
+    <button onclick="backToTvResults()" class="flex items-center gap-2 text-pirate-amber font-semibold text-base hover:text-pirate-gold transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+      </svg>
+      Back to results
+    </button>
+    <div id="tv-show-header" class="space-y-2"></div>
+
+    <!-- Episodes / Season Packs toggle -->
+    <div class="flex bg-pirate-black rounded-2xl border border-pirate-plank p-1">
+      <button id="tab-episodes" onclick="switchTvTab('episodes')"
+              class="flex-1 py-2.5 rounded-xl text-base font-bold transition-all text-center bg-pirate-amber text-pirate-black">
+        📋 Episodes
+      </button>
+      <button id="tab-packs" onclick="switchTvTab('packs')"
+              class="flex-1 py-2.5 rounded-xl text-base font-bold transition-all text-center text-pirate-cream/50">
+        📦 Season Packs
+      </button>
+    </div>
+
+    <!-- Torrent search bar -->
+    <input type="text" id="tv-torrent-search"
+           placeholder="Filter torrents..."
+           oninput="filterTvTorrents()"
+           class="w-full bg-pirate-hull border border-pirate-plank rounded-2xl py-3 px-5 text-base text-pirate-cream placeholder:text-pirate-cream/30 focus:outline-none focus:border-pirate-amber focus:ring-1 focus:ring-pirate-amber/50 transition-colors">
+
+    <div id="tv-season-tabs" class="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"></div>
+    <div id="tv-episode-list" class="space-y-3"></div>
+    <div id="tv-no-packs" class="hidden flex flex-col items-center justify-center py-10 gap-3 text-center">
+      <div class="text-5xl">📦</div>
+      <p class="text-lg text-pirate-cream/60 font-semibold">No season packs found!</p>
+      <p class="text-base text-pirate-cream/40">Only individual episodes be available for this show.</p>
+    </div>
+    <div id="tv-no-filter-results" class="hidden flex flex-col items-center justify-center py-10 gap-3 text-center">
+      <div class="text-5xl">🔭</div>
+      <p class="text-lg text-pirate-cream/60 font-semibold">No matches found!</p>
+      <p class="text-base text-pirate-cream/40">Try a different filter term.</p>
+    </div>
+  </div>
+
+  <!-- Load more (movies) -->
+  <div id="load-more-wrap" class="hidden pb-4">
+    <button onclick="loadMore()" id="load-more-btn"
+            class="w-full bg-pirate-hull border border-pirate-plank hover:border-pirate-amber/50 text-pirate-cream/70 font-semibold py-4 rounded-xl text-lg transition-colors">
+      🔽 Load More Results
+    </button>
+  </div>
+</div>
+
+<!-- Movie Detail Modal -->
+<div id="movie-modal" class="hidden fixed inset-0 z-50 flex items-end justify-center bg-black/70" onclick="if(event.target===this) closeModal()">
+  <div class="bg-pirate-dark border-t border-pirate-plank rounded-t-3xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+    <div id="modal-loading" class="flex flex-col items-center justify-center py-16 gap-4">
+      <div class="text-5xl skull-bob">⚓</div>
+      <p class="text-lg text-pirate-cream/60 font-semibold">Fetchin' the details...</p>
+    </div>
+    <div id="modal-body" class="hidden">
+      <div class="relative">
+        <img id="modal-poster" src="" alt="" class="w-full h-64 object-cover object-top">
+        <div class="absolute inset-0 bg-gradient-to-t from-pirate-dark via-transparent to-transparent"></div>
+        <button onclick="closeModal()" class="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full w-10 h-10 flex items-center justify-center text-xl transition-colors">✕</button>
+      </div>
+      <div class="px-5 pb-6 -mt-12 relative space-y-4">
+        <div>
+          <h3 id="modal-title" class="font-pirate text-3xl text-pirate-gold leading-tight"></h3>
+          <div class="flex flex-wrap items-center gap-2 mt-2">
+            <span id="modal-year" class="text-base text-pirate-cream/50"></span>
+            <div id="modal-genres" class="flex flex-wrap gap-1.5"></div>
+          </div>
+        </div>
+        <p id="modal-description" class="text-base text-pirate-cream/60 leading-relaxed"></p>
+        <div class="space-y-2">
+          <p class="text-sm font-semibold text-pirate-cream/40 uppercase tracking-wider">Choose yer quality:</p>
+          <div id="modal-torrents" class="flex gap-2"></div>
+        </div>
+        <div id="modal-no-torrents" class="hidden bg-pirate-red/10 border border-pirate-red/30 rounded-xl p-4 text-center">
+          <p class="text-base text-pirate-red font-semibold">☠️ No magnet links found for this movie!</p>
+        </div>
+        <a id="modal-ext-link" href="#" target="_blank"
+           class="w-full flex items-center justify-center gap-2 bg-pirate-cream/10 hover:bg-pirate-cream/15 text-pirate-cream/60 font-semibold py-3.5 rounded-xl text-base transition-colors mt-2">
+          🌐 View on YTS
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-4.5-6H21m0 0v7.5m0-7.5L10.5 13.5"/></svg>
+        </a>
+        <button onclick="closeModal()" class="w-full bg-pirate-cream/10 hover:bg-pirate-cream/15 text-pirate-cream/60 font-semibold py-3.5 rounded-xl text-base transition-colors">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let searchMode = 'movies';
+  let currentPage = 1;
+  let currentQuery = '';
+  let totalResults = 0;
+
+  // TV state
+  let tvShowResults = [];
+  let currentShowTitle = '';
+  let allTvTorrents = [];
+  let tvTotalTorrents = 0;
+  let selectedSeason = 'all';
+  let tvTabMode = 'episodes';
+
+  const searchInput = document.getElementById('search-input');
+  const initialState = document.getElementById('initial-state');
+  const searchLoading = document.getElementById('search-loading');
+  const noResults = document.getElementById('no-results');
+  const resultsHeader = document.getElementById('results-header');
+  const resultsList = document.getElementById('results-list');
+  const tvResultsList = document.getElementById('tv-results-list');
+  const tvEpisodesView = document.getElementById('tv-episodes-view');
+  const resultsCount = document.getElementById('results-count');
+  const loadMoreWrap = document.getElementById('load-more-wrap');
+
+  function switchMode(mode) {
+    searchMode = mode;
+    const tabMovies = document.getElementById('tab-movies');
+    const tabTv = document.getElementById('tab-tv');
+    if (mode === 'movies') {
+      tabMovies.className = 'flex-1 py-3 rounded-xl text-lg font-bold transition-all text-center bg-pirate-amber text-pirate-black';
+      tabTv.className = 'flex-1 py-3 rounded-xl text-lg font-bold transition-all text-center text-pirate-cream/50';
+      searchInput.placeholder = 'Search for a movie on YTS...';
+    } else {
+      tabTv.className = 'flex-1 py-3 rounded-xl text-lg font-bold transition-all text-center bg-pirate-amber text-pirate-black';
+      tabMovies.className = 'flex-1 py-3 rounded-xl text-lg font-bold transition-all text-center text-pirate-cream/50';
+      searchInput.placeholder = 'Search for a TV show...';
+    }
+    hideAllStates();
+    initialState.classList.remove('hidden');
+  }
+
+  function hideAllStates() {
+    initialState.classList.add('hidden');
+    searchLoading.classList.add('hidden');
+    noResults.classList.add('hidden');
+    resultsHeader.classList.add('hidden');
+    resultsList.classList.add('hidden');
+    tvResultsList.classList.add('hidden');
+    tvEpisodesView.classList.add('hidden');
+    loadMoreWrap.classList.add('hidden');
+  }
+
+  // Initialize
+  switchMode('movies');
+
+  // ─── Movie Search (YTS) ───
+
+  function renderMovieResult(movie) {
+    return `
+      <button onclick="openMovie('${movie.url.replace(/'/g, "\\'")}')"
+              class="treasure-card w-full bg-pirate-hull rounded-2xl border border-pirate-plank overflow-hidden flex text-left hover:border-pirate-amber/30 transition-colors">
+        <div class="w-20 shrink-0 bg-pirate-plank">
+          ${movie.image_url
+            ? `<img src="${movie.image_url}" alt="" class="w-full h-full object-cover" loading="lazy">`
+            : `<div class="w-full h-full flex items-center justify-center min-h-[100px]"><span class="text-3xl">🎬</span></div>`}
+        </div>
+        <div class="flex-1 p-4 min-w-0">
+          <h3 class="text-lg font-semibold text-pirate-cream leading-snug line-clamp-2">${movie.title}</h3>
+          <div class="flex items-center gap-2 mt-1">
+            ${movie.year ? `<span class="text-sm text-pirate-cream/50">${movie.year}</span>` : ''}
+            ${movie.rating ? `<span class="text-sm text-pirate-amber">⭐ ${movie.rating}</span>` : ''}
+          </div>
+        </div>
+        <div class="flex items-center pr-4 text-pirate-cream/30">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+          </svg>
+        </div>
+      </button>
+    `;
+  }
+
+  async function doSearch() {
+    const q = searchInput.value.trim();
+    if (!q) return;
+    currentQuery = q;
+    if (searchMode === 'movies') {
+      doMovieSearch(q);
+    } else {
+      doTvSearch(q);
+    }
+  }
+
+  async function doMovieSearch(q) {
+    currentPage = 1;
+    resultsList.innerHTML = '';
+    hideAllStates();
+    document.getElementById('loading-text').textContent = "Searchin' the seas...";
+    searchLoading.classList.remove('hidden');
+
+    const data = await apiCall(`/api/yts/search?q=${encodeURIComponent(q)}&page=1`);
+    hideAllStates();
+
+    if (!data || data.results.length === 0) {
+      noResults.classList.remove('hidden');
+      return;
+    }
+    totalResults = data.total;
+    resultsCount.textContent = totalResults.toLocaleString();
+    resultsHeader.classList.remove('hidden');
+    resultsList.classList.remove('hidden');
+    resultsList.innerHTML = data.results.map(renderMovieResult).join('');
+    if (data.results.length >= 20) loadMoreWrap.classList.remove('hidden');
+  }
+
+  async function loadMore() {
+    const btn = document.getElementById('load-more-btn');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Searchin\' for more...';
+    currentPage++;
+    const data = await apiCall(`/api/yts/search?q=${encodeURIComponent(currentQuery)}&page=${currentPage}`);
+    if (data && data.results.length > 0) {
+      resultsList.insertAdjacentHTML('beforeend', data.results.map(renderMovieResult).join(''));
+      if (data.results.length < 20) loadMoreWrap.classList.add('hidden');
+    } else {
+      loadMoreWrap.classList.add('hidden');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '🔽 Load More Results';
+  }
+
+  // ─── Movie Detail Modal ───
+
+  const modal = document.getElementById('movie-modal');
+  const modalLoading = document.getElementById('modal-loading');
+  const modalBody = document.getElementById('modal-body');
+
+  function closeModal() {
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  async function openMovie(movieUrl) {
+    modal.classList.remove('hidden');
+    modalLoading.classList.remove('hidden');
+    modalBody.classList.add('hidden');
+    document.body.style.overflow = 'hidden';
+
+    const data = await apiCall(`/api/yts/movie?url=${encodeURIComponent(movieUrl)}`);
+    modalLoading.classList.add('hidden');
+    if (!data) { closeModal(); return; }
+
+    document.getElementById('modal-title').textContent = data.title;
+    document.getElementById('modal-year').textContent = data.year || '';
+    document.getElementById('modal-description').textContent = data.description || 'No description available.';
+    document.getElementById('modal-ext-link').href = movieUrl;
+
+    const poster = document.getElementById('modal-poster');
+    if (data.image_url) { poster.src = data.image_url; poster.classList.remove('hidden'); }
+    else { poster.classList.add('hidden'); }
+
+    document.getElementById('modal-genres').innerHTML = (data.genres || []).map(g =>
+      `<span class="text-xs font-semibold uppercase tracking-wider bg-pirate-amber/15 text-pirate-amber px-2.5 py-0.5 rounded-full">${g}</span>`
+    ).join('');
+
+    const torrentsEl = document.getElementById('modal-torrents');
+    const noTorrents = document.getElementById('modal-no-torrents');
+    const tiers = ['720p', '1080p', '2160p'];
+    const torrents = data.torrents || {};
+
+    if (Object.keys(torrents).length === 0) {
+      torrentsEl.classList.add('hidden');
+      noTorrents.classList.remove('hidden');
+    } else {
+      noTorrents.classList.add('hidden');
+      torrentsEl.classList.remove('hidden');
+      torrentsEl.innerHTML = tiers.map(tier => {
+        if (torrents[tier]) {
+          return `<button onclick="plunderMagnet(this, '${torrents[tier].url.replace(/'/g, "\\'")}')"
+                          class="flex-1 bg-gradient-to-r from-pirate-amber to-pirate-gold text-pirate-black font-bold py-4 rounded-xl text-lg transition-all hover:shadow-lg hover:shadow-pirate-amber/20 active:scale-[0.98]">${tier}</button>`;
+        }
+        return `<button disabled class="flex-1 bg-pirate-plank text-pirate-cream/20 font-bold py-4 rounded-xl text-lg cursor-not-allowed">${tier}</button>`;
+      }).join('');
+    }
+    modalBody.classList.remove('hidden');
+  }
+
+  // ─── TV Show Search (1337x) ───
+
+  function renderTvResult(show) {
+    return `
+      <button onclick="openTvShow('${show.title.replace(/'/g, "\\'")}')"
+              class="treasure-card w-full bg-pirate-hull rounded-2xl border border-pirate-plank overflow-hidden flex text-left hover:border-pirate-amber/30 transition-colors">
+        <div class="w-20 shrink-0 bg-pirate-plank flex items-center justify-center">
+          ${show.image_url
+            ? `<img src="${show.image_url}" alt="" class="w-full h-full object-cover" loading="lazy">`
+            : `<span class="text-3xl">📺</span>`}
+        </div>
+        <div class="flex-1 p-4 min-w-0">
+          <h3 class="text-lg font-semibold text-pirate-cream leading-snug line-clamp-2">${show.title}</h3>
+          <div class="flex items-center gap-2 mt-1">
+            ${show.year ? `<span class="text-sm text-pirate-cream/50">${show.year}</span>` : ''}
+            <span class="text-xs font-semibold uppercase tracking-wider bg-blue-900/40 text-blue-400 px-2.5 py-0.5 rounded-full">${show.type}</span>
+          </div>
+        </div>
+        <div class="flex items-center pr-4 text-pirate-cream/30">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+          </svg>
+        </div>
+      </button>
+    `;
+  }
+
+  async function doTvSearch(q) {
+    hideAllStates();
+    document.getElementById('loading-text').textContent = "Searchin' the seas...";
+    searchLoading.classList.remove('hidden');
+
+    const data = await apiCall(`/api/tv/search?q=${encodeURIComponent(q)}`);
+    hideAllStates();
+
+    if (!data || data.results.length === 0) {
+      noResults.classList.remove('hidden');
+      return;
+    }
+    tvShowResults = data.results;
+    resultsCount.textContent = data.results.length;
+    resultsHeader.classList.remove('hidden');
+    tvResultsList.classList.remove('hidden');
+    tvResultsList.innerHTML = data.results.map(renderTvResult).join('');
+  }
+
+  function backToTvResults() {
+    hideAllStates();
+    resultsHeader.classList.remove('hidden');
+    tvResultsList.classList.remove('hidden');
+  }
+
+  async function openTvShow(title) {
+    currentShowTitle = title;
+    allTvTorrents = [];
+    selectedSeason = 'all';
+    tvTabMode = 'episodes';
+
+    hideAllStates();
+    document.getElementById('loading-text').textContent = "Scourin' 1337x for all torrents... This may take a moment!";
+    searchLoading.classList.remove('hidden');
+
+    const data = await apiCall(`/api/tv/torrents?q=${encodeURIComponent(title)}`);
+    hideAllStates();
+
+    if (!data || data.torrents.length === 0) {
+      noResults.classList.remove('hidden');
+      return;
+    }
+
+    tvTotalTorrents = data.total;
+    allTvTorrents = data.torrents;
+
+    const packCount = allTvTorrents.filter(t => t.is_season_pack).length;
+    document.getElementById('tv-show-header').innerHTML = `
+      <h3 class="font-pirate text-2xl text-pirate-gold">${currentShowTitle}</h3>
+      <p class="text-sm text-pirate-cream/40">${allTvTorrents.length.toLocaleString()} torrents loaded${packCount > 0 ? ` · ${packCount} season packs` : ''}</p>
+    `;
+
+    document.getElementById('tv-torrent-search').value = '';
+    switchTvTab('episodes');
+
+    tvEpisodesView.classList.remove('hidden');
+  }
+
+  function switchTvTab(tab) {
+    tvTabMode = tab;
+    const tabEp = document.getElementById('tab-episodes');
+    const tabPk = document.getElementById('tab-packs');
+    if (tab === 'episodes') {
+      tabEp.className = 'flex-1 py-2.5 rounded-xl text-base font-bold transition-all text-center bg-pirate-amber text-pirate-black';
+      tabPk.className = 'flex-1 py-2.5 rounded-xl text-base font-bold transition-all text-center text-pirate-cream/50';
+    } else {
+      tabPk.className = 'flex-1 py-2.5 rounded-xl text-base font-bold transition-all text-center bg-pirate-amber text-pirate-black';
+      tabEp.className = 'flex-1 py-2.5 rounded-xl text-base font-bold transition-all text-center text-pirate-cream/50';
+    }
+    selectedSeason = 'all';
+    applyTvFilters();
+  }
+
+  function getFilteredTorrents() {
+    let list = allTvTorrents;
+
+    if (tvTabMode === 'packs') {
+      list = list.filter(t => t.is_season_pack);
+    } else {
+      list = list.filter(t => !t.is_season_pack);
+    }
+
+    if (selectedSeason !== 'all') {
+      list = list.filter(t => String(t.season) === selectedSeason);
+    }
+
+    const query = (document.getElementById('tv-torrent-search').value || '').trim().toLowerCase();
+    if (query) {
+      list = list.filter(t => t.title.toLowerCase().includes(query));
+    }
+
+    return list;
+  }
+
+  function applyTvFilters() {
+    const baseList = tvTabMode === 'packs'
+      ? allTvTorrents.filter(t => t.is_season_pack)
+      : allTvTorrents.filter(t => !t.is_season_pack);
+
+    renderSeasonTabs(baseList);
+
+    const filtered = getFilteredTorrents();
+    renderTorrentList(filtered);
+  }
+
+  function filterTvTorrents() {
+    const filtered = getFilteredTorrents();
+    renderTorrentList(filtered);
+  }
+
+  function renderSeasonTabs(torrents) {
+    const seasonSet = new Set();
+    for (const t of torrents) {
+      if (t.season && String(t.season) !== '0') seasonSet.add(String(t.season));
+    }
+    const keys = [...seasonSet].sort((a, b) => Number(b) - Number(a));
+
+    const tabs = document.getElementById('tv-season-tabs');
+    if (keys.length === 0) {
+      tabs.innerHTML = '';
+      return;
+    }
+    let html = `<button onclick="filterSeason('all')"
+                        class="shrink-0 px-5 py-2.5 rounded-full text-base font-semibold transition-colors
+                               ${selectedSeason === 'all' ? 'bg-pirate-amber text-pirate-black' : 'bg-pirate-hull border border-pirate-plank text-pirate-cream/60'}">
+                  All
+                </button>`;
+    for (const s of keys) {
+      html += `<button onclick="filterSeason('${s}')"
+                       class="shrink-0 px-5 py-2.5 rounded-full text-base font-semibold transition-colors
+                              ${selectedSeason === s ? 'bg-pirate-amber text-pirate-black' : 'bg-pirate-hull border border-pirate-plank text-pirate-cream/60'}">
+                 S${s.padStart(2, '0')}
+               </button>`;
+    }
+    tabs.innerHTML = html;
+  }
+
+  function filterSeason(season) {
+    selectedSeason = season;
+    applyTvFilters();
+  }
+
+  function qualityBadgeColor(q) {
+    if (q === '2160p') return 'bg-purple-900/40 text-purple-400';
+    if (q === '1080p') return 'bg-green-900/40 text-green-400';
+    if (q === '720p') return 'bg-blue-900/40 text-blue-400';
+    return 'bg-pirate-cream/10 text-pirate-cream/50';
+  }
+
+  function renderTorrentList(torrents) {
+    const list = document.getElementById('tv-episode-list');
+    const noPacks = document.getElementById('tv-no-packs');
+    const noFilter = document.getElementById('tv-no-filter-results');
+
+    noPacks.classList.add('hidden');
+    noFilter.classList.add('hidden');
+
+    if (torrents.length === 0) {
+      list.innerHTML = '';
+      const query = (document.getElementById('tv-torrent-search').value || '').trim();
+      if (query || selectedSeason !== 'all') {
+        noFilter.classList.remove('hidden');
+      } else if (tvTabMode === 'packs') {
+        noPacks.classList.remove('hidden');
+      } else {
+        noFilter.classList.remove('hidden');
+      }
+      return;
+    }
+
+    list.innerHTML = torrents.map(t => {
+      const epLabel = t.is_season_pack
+        ? `S${String(t.season).padStart(2,'0')} Pack`
+        : `S${String(t.season).padStart(2,'0')}E${String(t.episode).padStart(2,'0')}`;
+      const epColor = t.is_season_pack ? 'text-green-400' : 'text-pirate-amber';
+      return `
+        <div class="treasure-card bg-pirate-hull rounded-2xl border border-pirate-plank p-4 space-y-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-sm font-bold ${epColor}">${epLabel}</span>
+              <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${qualityBadgeColor(t.quality)}">${t.quality}</span>
+            </div>
+            <p class="text-base text-pirate-cream leading-snug mt-1 line-clamp-2">${t.title}</p>
+          </div>
+          <div class="flex items-center gap-4 text-sm text-pirate-cream/50">
+            <span>📦 ${t.size}</span>
+            <span>🌱 ${t.seeds}</span>
+            <span>👥 ${t.peers}</span>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="plunderTv(this, '${t.torrent_url.replace(/'/g, "\\'")}')"
+                    class="flex-1 bg-gradient-to-r from-pirate-amber to-pirate-gold text-pirate-black font-bold py-3.5 rounded-xl text-base transition-all hover:shadow-lg hover:shadow-pirate-amber/20 active:scale-[0.98]">
+              🏴‍☠️ Plunder
+            </button>
+            <a href="${t.torrent_url}" target="_blank" onclick="event.stopPropagation()"
+               class="flex items-center justify-center bg-pirate-cream/10 hover:bg-pirate-cream/15 text-pirate-cream/50 px-4 rounded-xl transition-colors"
+               title="View on 1337x">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-4.5-6H21m0 0v7.5m0-7.5L10.5 13.5"/></svg>
+            </a>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ─── TV Plunder (lazy magnet fetch from 1337x) ───
+
+  async function plunderTv(btn, torrentUrl) {
+    const origText = btn.innerHTML;
+    const origClasses = btn.className;
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Fetchin\' magnet...';
+    btn.classList.add('opacity-60');
+
+    const magnetData = await apiCall(`/api/tv/magnet?url=${encodeURIComponent(torrentUrl)}`);
+    if (!magnetData || !magnetData.magnet_url) {
+      showToast('Failed to get magnet link!');
+      btn.innerHTML = origText;
+      btn.className = origClasses;
+      btn.disabled = false;
+      return;
+    }
+
+    btn.innerHTML = '⏳ Plunderin\'...';
+    const data = await apiCall('/api/torrents/add', {
+      method: 'POST',
+      body: JSON.stringify({ url: magnetData.magnet_url }),
+    });
+
+    if (data) {
+      showToast(data.message);
+      btn.className = 'w-full bg-green-700 text-white font-bold py-3.5 rounded-xl text-base';
+      btn.innerHTML = '✅ Added!';
+      setTimeout(() => {
+        btn.innerHTML = origText;
+        btn.className = origClasses;
+        btn.disabled = false;
+      }, 3000);
+    } else {
+      btn.innerHTML = origText;
+      btn.className = origClasses;
+      btn.disabled = false;
+    }
+  }
+
+  // ─── Shared Download Function (YTS movies with direct magnet) ───
+
+  async function plunderMagnet(btn, url) {
+    const origText = btn.innerHTML;
+    const origClasses = btn.className;
+    btn.disabled = true;
+    btn.innerHTML = '⏳';
+    btn.classList.add('opacity-60');
+
+    const data = await apiCall('/api/torrents/add', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    });
+
+    if (data) {
+      showToast(data.message);
+      btn.className = btn.className.includes('flex-1')
+        ? 'flex-1 bg-green-700 text-white font-bold py-4 rounded-xl text-lg'
+        : 'w-full bg-green-700 text-white font-bold py-3.5 rounded-xl text-base';
+      btn.innerHTML = '✅ Added!';
+      setTimeout(() => {
+        btn.innerHTML = origText;
+        btn.className = origClasses;
+        btn.disabled = false;
+      }, 3000);
+    } else {
+      btn.innerHTML = origText;
+      btn.className = origClasses;
+      btn.disabled = false;
+    }
+  }
+</script>
+{% endblock %}

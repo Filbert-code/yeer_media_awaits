@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
   <title>{% block title %}The Pirate Bay of Downloads{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -79,13 +79,18 @@
     }
     .skull-bob { animation: skull-bob 1.5s ease-in-out infinite; }
 
-    /* Bottom nav safe area */
+    /* Flex layout: nav never overlaps content */
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+    }
     .page-content {
-      padding-bottom: 6rem;
+      flex: 1;
     }
   </style>
 </head>
-<body class="h-full bg-pirate-black text-pirate-cream">
+<body class="bg-pirate-black text-pirate-cream">
 
   <!-- Toast container -->
   <div id="toast-container" class="fixed top-4 left-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
@@ -112,7 +117,7 @@
   </main>
 
   <!-- Bottom navigation -->
-  <nav class="fixed bottom-0 left-0 right-0 bg-pirate-dark border-t border-pirate-plank z-40">
+  <nav class="sticky bottom-0 left-0 right-0 bg-pirate-dark border-t border-pirate-plank z-40" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
     <div class="max-w-lg mx-auto flex">
       <a href="/"
          class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors
@@ -121,6 +126,22 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
         </svg>
         <span class="text-sm font-semibold">Plunder</span>
+      </a>
+      <a href="/search"
+         class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors
+                {{ 'text-pirate-gold' if request.path == '/search' else 'text-pirate-cream/50 hover:text-pirate-cream/80' }}">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+        </svg>
+        <span class="text-sm font-semibold">Search</span>
+      </a>
+      <a href="/direct"
+         class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors
+                {{ 'text-pirate-gold' if request.path == '/direct' else 'text-pirate-cream/50 hover:text-pirate-cream/80' }}">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.553-3.554a4.5 4.5 0 00-6.364-6.364L4.5 8.25a4.5 4.5 0 006.364 6.364l4.5-4.5z"/>
+        </svg>
+        <span class="text-sm font-semibold">Direct</span>
       </a>
       <a href="/browse"
          class="flex-1 flex flex-col items-center py-3 gap-1 transition-colors

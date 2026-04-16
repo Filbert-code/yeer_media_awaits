@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Direct Plunder — Rum & Reels{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+  <h2 class="font-pirate text-3xl text-pirate-gold">Direct Plunder</h2>
+
+  <!-- Big site buttons -->
+  <div class="flex gap-3">
+    <a href="https://1337x.pro" target="_blank"
+       class="flex-1 bg-pirate-hull border-2 border-pirate-plank hover:border-pirate-amber/50 rounded-2xl py-5 flex flex-col items-center gap-2 transition-colors active:scale-[0.98]">
+      <span class="text-4xl">📺</span>
+      <span class="text-xl font-bold text-pirate-amber">TV Shows</span>
+      <span class="text-sm text-pirate-cream/40">1337x.pro</span>
+    </a>
+    <a href="https://ytsmx.expert" target="_blank"
+       class="flex-1 bg-pirate-hull border-2 border-pirate-plank hover:border-pirate-amber/50 rounded-2xl py-5 flex flex-col items-center gap-2 transition-colors active:scale-[0.98]">
+      <span class="text-4xl">🎬</span>
+      <span class="text-xl font-bold text-pirate-amber">Movies</span>
+      <span class="text-sm text-pirate-cream/40">YTS</span>
+    </a>
+  </div>
+
+  <!-- Instructions -->
+  <div class="bg-pirate-hull rounded-2xl border border-pirate-plank p-5 space-y-4">
+    <div class="space-y-3">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl mt-0.5">📋</span>
+        <div>
+          <p class="text-base font-semibold text-pirate-cream">How it works</p>
+          <ol class="text-sm text-pirate-cream/50 leading-relaxed mt-1 space-y-1 list-decimal list-inside">
+            <li>Tap a site above to browse for a movie or TV show</li>
+            <li>When you find what ye want, <strong class="text-pirate-cream/70">copy the page URL</strong> from the address bar</li>
+            <li>Come back here and paste it below</li>
+            <li>Hit Plunder — we handle the rest!</li>
+          </ol>
+        </div>
+      </div>
+      <div class="flex items-start gap-3">
+        <span class="text-2xl mt-0.5">💡</span>
+        <div>
+          <p class="text-sm text-pirate-cream/50 leading-relaxed">
+            <strong class="text-pirate-cream/70">You don't need to find a download button.</strong> Just copy the URL from the top of your browser — our app extracts the download automatically. You can also paste a <code class="bg-pirate-plank px-1.5 py-0.5 rounded text-pirate-amber text-xs">magnet:?</code> link from any torrent site.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- URL Input -->
+  <div class="space-y-3">
+    <textarea id="url-input"
+              placeholder="Paste a URL or magnet link here..."
+              rows="3"
+              class="w-full bg-pirate-hull border border-pirate-plank rounded-2xl py-4 px-5 text-base text-pirate-cream placeholder:text-pirate-cream/30 focus:outline-none focus:border-pirate-amber focus:ring-1 focus:ring-pirate-amber/50 transition-colors resize-none"></textarea>
+    <button id="plunder-btn" onclick="directPlunder()"
+            class="w-full bg-gradient-to-r from-pirate-amber to-pirate-gold text-pirate-black font-bold py-4 rounded-xl text-lg transition-all hover:shadow-lg hover:shadow-pirate-amber/20 active:scale-[0.98]">
+      🏴‍☠️ Plunder It!
+    </button>
+  </div>
+
+  <!-- Loading state -->
+  <div id="dp-loading" class="hidden flex flex-col items-center justify-center py-12 gap-4">
+    <div class="text-6xl skull-bob">⚓</div>
+    <p class="text-lg text-pirate-cream/60 font-semibold">Resolvin' the treasure map...</p>
+  </div>
+
+  <!-- YTS quality picker (shown when a YTS URL has multiple qualities) -->
+  <div id="dp-yts-result" class="hidden bg-pirate-hull rounded-2xl border border-pirate-plank p-5 space-y-4">
+    <h3 id="dp-yts-title" class="font-pirate text-2xl text-pirate-gold"></h3>
+    <p class="text-sm font-semibold text-pirate-cream/40 uppercase tracking-wider">Choose yer quality:</p>
+    <div id="dp-yts-buttons" class="flex gap-2"></div>
+  </div>
+
+  <!-- Success state -->
+  <div id="dp-success" class="hidden bg-green-900/30 border border-green-700/40 rounded-2xl p-5 text-center space-y-2">
+    <div class="text-5xl">🍾</div>
+    <p class="text-lg font-semibold text-green-400">Download started!</p>
+    <p class="text-sm text-pirate-cream/50">Head to the <a href="/" class="text-pirate-amber underline">Plunder</a> tab to check on yer download.</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const urlInput = document.getElementById('url-input');
+  const plunderBtn = document.getElementById('plunder-btn');
+  const dpLoading = document.getElementById('dp-loading');
+  const dpYtsResult = document.getElementById('dp-yts-result');
+  const dpSuccess = document.getElementById('dp-success');
+
+  function resetStates() {
+    dpLoading.classList.add('hidden');
+    dpYtsResult.classList.add('hidden');
+    dpSuccess.classList.add('hidden');
+  }
+
+  async function directPlunder() {
+    const url = urlInput.value.trim();
+    if (!url) {
+      showToast('Paste a URL or magnet link first!', 'error');
+      return;
+    }
+
+    resetStates();
+    plunderBtn.disabled = true;
+    plunderBtn.innerHTML = '⏳ Resolvin\'...';
+    dpLoading.classList.remove('hidden');
+
+    const result = await apiCall('/api/direct-plunder', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    });
+
+    dpLoading.classList.add('hidden');
+
+    if (!result) {
+      plunderBtn.disabled = false;
+      plunderBtn.innerHTML = '🏴‍☠️ Plunder It!';
+      return;
+    }
+
+    if (result.type === 'magnet') {
+      await addTorrent(result.magnet_url);
+    } else if (result.type === 'yts') {
+      showYtsOptions(result.title, result.torrents);
+    }
+
+    plunderBtn.disabled = false;
+    plunderBtn.innerHTML = '🏴‍☠️ Plunder It!';
+  }
+
+  function showYtsOptions(title, torrents) {
+    document.getElementById('dp-yts-title').textContent = title;
+    const tiers = ['720p', '1080p', '2160p'];
+    const btnsEl = document.getElementById('dp-yts-buttons');
+    btnsEl.innerHTML = tiers.map(tier => {
+      if (torrents[tier]) {
+        return `<button onclick="plunderYtsQuality(this, '${torrents[tier].url.replace(/'/g, "\\'")}')"
+                        class="flex-1 bg-gradient-to-r from-pirate-amber to-pirate-gold text-pirate-black font-bold py-4 rounded-xl text-lg transition-all hover:shadow-lg hover:shadow-pirate-amber/20 active:scale-[0.98]">${tier}</button>`;
+      }
+      return `<button disabled class="flex-1 bg-pirate-plank text-pirate-cream/20 font-bold py-4 rounded-xl text-lg cursor-not-allowed">${tier}</button>`;
+    }).join('');
+    dpYtsResult.classList.remove('hidden');
+  }
+
+  async function plunderYtsQuality(btn, magnetUrl) {
+    const origText = btn.innerHTML;
+    const origClasses = btn.className;
+    btn.disabled = true;
+    btn.innerHTML = '⏳';
+    btn.classList.add('opacity-60');
+
+    const ok = await addTorrent(magnetUrl);
+
+    if (ok) {
+      btn.className = 'flex-1 bg-green-700 text-white font-bold py-4 rounded-xl text-lg';
+      btn.innerHTML = '✅ Added!';
+    } else {
+      btn.innerHTML = origText;
+      btn.className = origClasses;
+      btn.disabled = false;
+    }
+  }
+
+  async function addTorrent(magnetUrl) {
+    const data = await apiCall('/api/torrents/add', {
+      method: 'POST',
+      body: JSON.stringify({ url: magnetUrl }),
+    });
+
+    if (data) {
+      showToast(data.message);
+      dpYtsResult.classList.add('hidden');
+      dpSuccess.classList.remove('hidden');
+      return true;
+    }
+    return false;
+  }
+</script>
+{% endblock %}
