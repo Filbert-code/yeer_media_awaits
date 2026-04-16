@@ -29,47 +29,48 @@
         <div>
           <p class="text-base font-semibold text-pirate-cream">How it works</p>
           <ol class="text-sm text-pirate-cream/50 leading-relaxed mt-1 space-y-1 list-decimal list-inside">
-            <li>Tap a site above to browse for a movie or TV show</li>
-            <li>When you find what ye want, <strong class="text-pirate-cream/70">copy the page URL</strong> from the address bar</li>
-            <li>Come back here and paste it below</li>
-            <li>Hit Plunder — we handle the rest!</li>
+            <li>Tap a site above to find a movie or TV show</li>
+            <li>Look for a <strong class="text-pirate-cream/70">"Magnet"</strong> or <strong class="text-pirate-cream/70">magnet icon</strong> button on the torrent page</li>
+            <li>Long press (or right-click) the magnet button and <strong class="text-pirate-cream/70">copy the link</strong></li>
+            <li>Come back here, paste it below, and hit Plunder!</li>
           </ol>
         </div>
       </div>
       <div class="flex items-start gap-3">
-        <span class="text-2xl mt-0.5">💡</span>
+        <span class="text-2xl mt-0.5">🧲</span>
         <div>
-          <p class="text-sm text-pirate-cream/50 leading-relaxed">
-            <strong class="text-pirate-cream/70">You don't need to find a download button.</strong> Just copy the URL from the top of your browser — our app extracts the download automatically. You can also paste a <code class="bg-pirate-plank px-1.5 py-0.5 rounded text-pirate-amber text-xs">magnet:?</code> link from any torrent site.
-          </p>
+          <p class="text-base font-semibold text-pirate-cream">What's a magnet link?</p>
+          <p class="text-sm text-pirate-cream/50 leading-relaxed">A magnet link starts with <code class="bg-pirate-plank px-1.5 py-0.5 rounded text-pirate-amber text-xs">magnet:?</code> and is usually very long. It's the download link used by torrent sites. You can also paste a regular <code class="bg-pirate-plank px-1.5 py-0.5 rounded text-pirate-amber text-xs">.torrent</code> file URL if you find one.</p>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Quick paste button -->
+  <button id="quick-paste-btn" onclick="quickPaste()"
+          class="w-full bg-pirate-hull border-2 border-dashed border-pirate-amber/40 hover:border-pirate-amber rounded-2xl py-6 text-center transition-colors active:scale-[0.98]">
+    <span class="text-4xl block mb-2">📋</span>
+    <span class="text-lg font-bold text-pirate-amber">Paste &amp; Plunder</span>
+    <span class="block text-sm text-pirate-cream/40 mt-1">One tap — reads your clipboard and starts the download</span>
+  </button>
+
+  <!-- Divider -->
+  <div class="flex items-center gap-3">
+    <div class="flex-1 h-px bg-pirate-plank"></div>
+    <span class="text-sm text-pirate-cream/30 font-semibold">or paste manually</span>
+    <div class="flex-1 h-px bg-pirate-plank"></div>
+  </div>
+
   <!-- URL Input -->
   <div class="space-y-3">
     <textarea id="url-input"
-              placeholder="Paste a URL or magnet link here..."
+              placeholder="Paste a magnet link or torrent URL here..."
               rows="3"
               class="w-full bg-pirate-hull border border-pirate-plank rounded-2xl py-4 px-5 text-base text-pirate-cream placeholder:text-pirate-cream/30 focus:outline-none focus:border-pirate-amber focus:ring-1 focus:ring-pirate-amber/50 transition-colors resize-none"></textarea>
     <button id="plunder-btn" onclick="directPlunder()"
             class="w-full bg-gradient-to-r from-pirate-amber to-pirate-gold text-pirate-black font-bold py-4 rounded-xl text-lg transition-all hover:shadow-lg hover:shadow-pirate-amber/20 active:scale-[0.98]">
       🏴‍☠️ Plunder It!
     </button>
-  </div>
-
-  <!-- Loading state -->
-  <div id="dp-loading" class="hidden flex flex-col items-center justify-center py-12 gap-4">
-    <div class="text-6xl skull-bob">⚓</div>
-    <p class="text-lg text-pirate-cream/60 font-semibold">Resolvin' the treasure map...</p>
-  </div>
-
-  <!-- YTS quality picker (shown when a YTS URL has multiple qualities) -->
-  <div id="dp-yts-result" class="hidden bg-pirate-hull rounded-2xl border border-pirate-plank p-5 space-y-4">
-    <h3 id="dp-yts-title" class="font-pirate text-2xl text-pirate-gold"></h3>
-    <p class="text-sm font-semibold text-pirate-cream/40 uppercase tracking-wider">Choose yer quality:</p>
-    <div id="dp-yts-buttons" class="flex gap-2"></div>
   </div>
 
   <!-- Success state -->
@@ -85,97 +86,76 @@
 <script>
   const urlInput = document.getElementById('url-input');
   const plunderBtn = document.getElementById('plunder-btn');
-  const dpLoading = document.getElementById('dp-loading');
-  const dpYtsResult = document.getElementById('dp-yts-result');
   const dpSuccess = document.getElementById('dp-success');
+  const quickPasteBtn = document.getElementById('quick-paste-btn');
 
-  function resetStates() {
-    dpLoading.classList.add('hidden');
-    dpYtsResult.classList.add('hidden');
-    dpSuccess.classList.add('hidden');
+  async function quickPaste() {
+    try {
+      const text = await navigator.clipboard.readText();
+      const trimmed = text.trim();
+
+      if (!trimmed) {
+        showToast('Clipboard is empty!', 'error');
+        return;
+      }
+
+      if (!trimmed.startsWith('magnet:') && !trimmed.startsWith('http')) {
+        showToast('No valid link found in clipboard!', 'error');
+        urlInput.value = trimmed;
+        return;
+      }
+
+      urlInput.value = trimmed;
+      quickPasteBtn.innerHTML = '<span class="text-2xl block mb-1">⏳</span><span class="text-lg font-bold text-pirate-amber">Plunderin\'...</span>';
+
+      const data = await apiCall('/api/torrents/add', {
+        method: 'POST',
+        body: JSON.stringify({ url: trimmed }),
+      });
+
+      if (data) {
+        showToast(data.message);
+        dpSuccess.classList.remove('hidden');
+        quickPasteBtn.innerHTML = '<span class="text-4xl block mb-1">✅</span><span class="text-lg font-bold text-green-400">Added!</span>';
+        setTimeout(() => {
+          quickPasteBtn.innerHTML = '<span class="text-4xl block mb-2">📋</span><span class="text-lg font-bold text-pirate-amber">Paste &amp; Plunder</span><span class="block text-sm text-pirate-cream/40 mt-1">One tap — reads your clipboard and starts the download</span>';
+        }, 3000);
+      } else {
+        quickPasteBtn.innerHTML = '<span class="text-4xl block mb-2">📋</span><span class="text-lg font-bold text-pirate-amber">Paste &amp; Plunder</span><span class="block text-sm text-pirate-cream/40 mt-1">One tap — reads your clipboard and starts the download</span>';
+      }
+    } catch (err) {
+      showToast('Clipboard access denied! Use the manual paste below.', 'error');
+    }
   }
 
   async function directPlunder() {
     const url = urlInput.value.trim();
     if (!url) {
-      showToast('Paste a URL or magnet link first!', 'error');
+      showToast('Paste a magnet link or torrent URL first!', 'error');
       return;
     }
 
-    resetStates();
-    plunderBtn.disabled = true;
-    plunderBtn.innerHTML = '⏳ Resolvin\'...';
-    dpLoading.classList.remove('hidden');
+    if (!url.startsWith('magnet:') && !url.startsWith('http')) {
+      showToast('That doesn\'t look like a valid link!', 'error');
+      return;
+    }
 
-    const result = await apiCall('/api/direct-plunder', {
+    dpSuccess.classList.add('hidden');
+    plunderBtn.disabled = true;
+    plunderBtn.innerHTML = '⏳ Plunderin\'...';
+
+    const data = await apiCall('/api/torrents/add', {
       method: 'POST',
       body: JSON.stringify({ url }),
     });
 
-    dpLoading.classList.add('hidden');
-
-    if (!result) {
-      plunderBtn.disabled = false;
-      plunderBtn.innerHTML = '🏴‍☠️ Plunder It!';
-      return;
-    }
-
-    if (result.type === 'magnet') {
-      await addTorrent(result.magnet_url);
-    } else if (result.type === 'yts') {
-      showYtsOptions(result.title, result.torrents);
+    if (data) {
+      showToast(data.message);
+      dpSuccess.classList.remove('hidden');
     }
 
     plunderBtn.disabled = false;
     plunderBtn.innerHTML = '🏴‍☠️ Plunder It!';
-  }
-
-  function showYtsOptions(title, torrents) {
-    document.getElementById('dp-yts-title').textContent = title;
-    const tiers = ['720p', '1080p', '2160p'];
-    const btnsEl = document.getElementById('dp-yts-buttons');
-    btnsEl.innerHTML = tiers.map(tier => {
-      if (torrents[tier]) {
-        return `<button onclick="plunderYtsQuality(this, '${torrents[tier].url.replace(/'/g, "\\'")}')"
-                        class="flex-1 bg-gradient-to-r from-pirate-amber to-pirate-gold text-pirate-black font-bold py-4 rounded-xl text-lg transition-all hover:shadow-lg hover:shadow-pirate-amber/20 active:scale-[0.98]">${tier}</button>`;
-      }
-      return `<button disabled class="flex-1 bg-pirate-plank text-pirate-cream/20 font-bold py-4 rounded-xl text-lg cursor-not-allowed">${tier}</button>`;
-    }).join('');
-    dpYtsResult.classList.remove('hidden');
-  }
-
-  async function plunderYtsQuality(btn, magnetUrl) {
-    const origText = btn.innerHTML;
-    const origClasses = btn.className;
-    btn.disabled = true;
-    btn.innerHTML = '⏳';
-    btn.classList.add('opacity-60');
-
-    const ok = await addTorrent(magnetUrl);
-
-    if (ok) {
-      btn.className = 'flex-1 bg-green-700 text-white font-bold py-4 rounded-xl text-lg';
-      btn.innerHTML = '✅ Added!';
-    } else {
-      btn.innerHTML = origText;
-      btn.className = origClasses;
-      btn.disabled = false;
-    }
-  }
-
-  async function addTorrent(magnetUrl) {
-    const data = await apiCall('/api/torrents/add', {
-      method: 'POST',
-      body: JSON.stringify({ url: magnetUrl }),
-    });
-
-    if (data) {
-      showToast(data.message);
-      dpYtsResult.classList.add('hidden');
-      dpSuccess.classList.remove('hidden');
-      return true;
-    }
-    return false;
   }
 </script>
 {% endblock %}
